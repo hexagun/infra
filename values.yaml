@@ -1,0 +1,22 @@
+jenkins:
+  controller:
+    serviceType: NodePort
+    nodePort: 30263
+    jenkinsUriPrefix: "/jenkins"
+    podSecurityContextOverride:
+      runAsNonRoot: true
+      runAsUser: 1000
+      supplementalGroups: [1000]
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    accessMode: ReadWriteOnce
+    existingClaim: jenkins-pvc
+    storageClass: jenkinsstorage
+
+  serviceAccount:
+    create: false
+    name: jenkins
+    annotations: {}
+    imagePullSecretName:

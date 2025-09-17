@@ -1,0 +1,9 @@
+apiVersion: v2
+name: infra
+version: 0.1.0
+description: Umbrella chart for cluster infrastructure (Jenkins, ingress, etc.)
+type: application
+dependencies:
+  - name: jenkins
+    version: 5.8.86
+    repository: https://charts.jenkins.io
