@@ -1,9 +1,12 @@
 apiVersion: v2
 name: infra
-version: 0.1.0
+version: 0.2.0
 description: Umbrella chart for cluster infrastructure (Jenkins, ingress, etc.)
 type: application
 dependencies:
+  - name: ingress-nginx
+    version: 4.11.1  # pick stable
+    repository: https://kubernetes.github.io/ingress-nginx
   - name: jenkins
     version: 5.8.86
     repository: https://charts.jenkins.io
