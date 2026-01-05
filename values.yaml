@@ -98,9 +98,32 @@ jenkins:
       name: jenkins-agent
       create: false   # since you created it yourself with RBAC
 
-nginxIngress:
-  class: nginx
-  controller:
-    replicaCount: 1
-    service:
-      type: NodePort   # for kubeadm/local; use LoadBalancer in cloud
+longhorn:
+  enabled: true
+
+  persistence:
+    defaultClass: false   # we’ll control this explicitly
+
+  defaultSettings:
+    defaultReplicaCount: 1   # IMPORTANT for single-node
+    storageOverProvisioningPercentage: 200
+    storageMinimalAvailablePercentage: 10
+
+  service:
+    ui:
+      type: NodePort
+      nodePort: 30080
+
+  ingress:
+    enabled: false
+  
+  csi:
+    kubeletRootDir: /var/lib/kubelet
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi

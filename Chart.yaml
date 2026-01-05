@@ -1,9 +1,12 @@
 apiVersion: v2
 name: infra
-version: 0.3.1
+version: 0.4.0
 description: Umbrella chart for cluster infrastructure (Jenkins, etc.)
 type: application
 dependencies:
   - name: jenkins
     version: 5.8.86
     repository: https://charts.jenkins.io
+  - name: longhorn
+    version: 1.7.2
+    repository: https://charts.longhorn.io
