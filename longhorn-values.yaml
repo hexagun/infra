@@ -1,0 +1,42 @@
+defaultSettings:
+  defaultReplicaCount: 1   # IMPORTANT for single-node
+
+service:
+  ui:
+    type: NodePort
+    nodePort: 30080
+
+# longhorn:
+#   enabled: true
+
+#   # FORCE Longhorn to install into its own namespace
+#   namespaceOverride: longhorn-system
+#   # Tell the chart to create it
+#   createNamespace: true
+  
+#   persistence:
+#     defaultClass: false   # we’ll control this explicitly
+
+#   defaultSettings:
+#     defaultReplicaCount: 1   # IMPORTANT for single-node
+#     storageOverProvisioningPercentage: 200
+#     storageMinimalAvailablePercentage: 10
+
+#   service:
+#     ui:
+#       type: NodePort
+#       nodePort: 30080
+
+#   ingress:
+#     enabled: false
+  
+#   csi:
+#     kubeletRootDir: /var/lib/kubelet
+
+#   resources:
+#     limits:
+#       cpu: 500m
+#       memory: 512Mi
+#     requests:
+#       cpu: 100m
+#       memory: 128Mi

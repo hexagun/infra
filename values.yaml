@@ -97,10 +97,3 @@ jenkins:
     serviceAccount:
       name: jenkins-agent
       create: false   # since you created it yourself with RBAC
-
-nginxIngress:
-  class: nginx
-  controller:
-    replicaCount: 1
-    service:
-      type: NodePort   # for kubeadm/local; use LoadBalancer in cloud
