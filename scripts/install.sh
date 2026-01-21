@@ -5,8 +5,8 @@ NAMESPACE="devops-tools"
 RELEASE="infra"
 CHART_PATH="$(dirname "$0")/.."
 
-# Ensure namespace exists
-kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$NAMESPACE"
+echo "==> Creating namespaces"
+kubectl apply -f "$CHART_PATH/namespaces"
 
 # Longhorn Not well suited for umbrella chart
 
@@ -17,16 +17,18 @@ helm repo update
 helm upgrade --install longhorn longhorn/longhorn \
   -n longhorn-system \
   --create-namespace \
-  -f "$CHART_PATH/longhorn-values.yaml"
+  -f "$CHART_PATH/helm/longhorn-values.yaml"
 
 # Pull dependencies (jenkins + ingress-nginx)
-helm dependency update "$CHART_PATH"
+helm dependency update "$CHART_PATH/helm"
+
+echo "==> Applying storage primitives"
+kubectl apply -f "$CHART_PATH/storage/pvcs"
 
 # Install/upgrade release
-helm upgrade --install "$RELEASE" "$CHART_PATH" \
+helm upgrade --install "$RELEASE" "$CHART_PATH/helm" \
   -n "$NAMESPACE" \
   --timeout 30m30s \
   --create-namespace
-#   -f "$CHART_PATH/values/devops-tools.yaml"
 
 echo "✅ Infra deployed to namespace: $NAMESPACE"
