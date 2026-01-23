@@ -1,9 +1,12 @@
 apiVersion: v2
 name: infra
-version: 0.4.1
-description: Umbrella chart for cluster infrastructure (Jenkins, etc.)
+version: 0.5.0
+description: Umbrella chart for cluster infrastructure (Jenkins, Vault, etc.)
 type: application
 dependencies:
   - name: jenkins
     version: 5.8.86
     repository: https://charts.jenkins.io
+  - name: vault
+    version: "0.27.0"   # example, pin this
+    repository: "https://helm.releases.hashicorp.com"

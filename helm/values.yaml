@@ -95,3 +95,16 @@ jenkins:
     serviceAccount:
       name: jenkins-agent
       create: false   # since you created it yourself with RBAC
+
+vault:
+  server:
+    ha:
+      enabled: false
+
+    dataStorage:
+      enabled: true
+      storageClass: longhorn
+      size: 10Gi
+
+  ui:
+    enabled: true
