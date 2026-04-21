@@ -103,8 +103,20 @@ vault:
 
     dataStorage:
       enabled: true
+      existingClaim: vault-pvc-longhorn
       storageClass: longhorn
       size: 10Gi
 
   ui:
     enabled: true
+
+externalSecrets:
+  install: true
+  version: "0.11.0"
+
+cloudflared:
+  enabled: true
+  tunnelName: "hex-a-gun-tunnel"
+  ingress:
+    - hostname: "hex-a-gun.com"
+      service: "https://infra-jenkins:8080"

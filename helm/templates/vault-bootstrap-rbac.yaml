@@ -1,0 +1,35 @@
+# Vault Bootstrap RBAC
+# ServiceAccount, Role, and RoleBinding for the bootstrap Job
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: vault-bootstrap
+    app.kubernetes.io/managed-by: helm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-bootstrap
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-bootstrap
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: vault-bootstrap
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: vault-bootstrap
+  apiGroup: rbac.authorization.k8s.io
