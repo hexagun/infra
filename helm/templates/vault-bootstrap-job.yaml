@@ -13,6 +13,7 @@ metadata:
 spec:
   template:
     spec:
+      restartPolicy: OnFailure
       serviceAccountName: vault-bootstrap
       containers:
         - name: vault-cli
