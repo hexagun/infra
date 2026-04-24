@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Phases: vault, jenkins, full
-# Usage: PHASE=vault ./scripts/install.sh
-PHASE="${PHASE:-full}"
-
 NAMESPACE="devops-tools"
 RELEASE="infra"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHART_PATH="$SCRIPT_DIR/.."
 
-echo "==> Deploying in PHASE=$PHASE mode"
+echo "==> Deploying infrastructure"
 
 # Always create namespaces (idempotent)
 echo "==> Creating namespaces"
@@ -29,37 +25,14 @@ helm upgrade --install longhorn longhorn/longhorn \
 echo "==> Applying storage primitives"
 kubectl apply -f "$CHART_PATH/storage/pvcs"
 
-# Determine enable flags based on phase
-case "$PHASE" in
-  vault)
-    JENKINS_ENABLED="false"
-    VAULT_ENABLED="true"
-    ;;
-  jenkins)
-    JENKINS_ENABLED="true"
-    VAULT_ENABLED="true"
-    ;;
-  full)
-    JENKINS_ENABLED="true"
-    VAULT_ENABLED="true"
-    ;;
-  *)
-    echo "❌ Unknown PHASE: $PHASE"
-    echo "Use: vault, jenkins, or full"
-    exit 1
-    ;;
-esac
-
-# Install/upgrade helm chart with phase-specific overrides
-echo "==> Installing Helm chart (jenkins=$JENKINS_ENABLED, vault=$VAULT_ENABLED)"
+# Install/upgrade helm chart
+echo "==> Installing Helm chart"
 helm upgrade --install "$RELEASE" "$CHART_PATH/helm" \
   -n "$NAMESPACE" \
   --timeout 30m30s \
-  --create-namespace \
-  --set jenkins.enabled="$JENKINS_ENABLED" \
-  --set vault.enabled="$VAULT_ENABLED"
+  --create-namespace
 
-echo "✅ Infra deployed to namespace: $NAMESPACE"
+echo "Infra deployed to namespace: $NAMESPACE"
 echo ""
 echo "To check logs:"
 echo "  kubectl logs -l job-name=vault-bootstrap -n $NAMESPACE"
