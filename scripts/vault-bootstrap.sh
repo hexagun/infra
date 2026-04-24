@@ -135,48 +135,6 @@ else
   echo "Admin token already exists."
 fi
 
-# Seed initial secrets (placeholder for Cloudflare token)
-echo "===> Seeding initial secrets"
-
-# Enable KV secrets engine if not already enabled
-vault secrets list | grep -q "kv$" || vault secrets enable -path=kv kv
-
-# Enable Kubernetes auth method for External Secrets Operator
-echo "Enabling Kubernetes auth method..."
-vault auth list | grep -q "kubernetes/" || vault auth enable kubernetes
-
-# Configure Kubernetes auth with the external-secrets service account
-echo "Configuring Kubernetes auth role..."
-vault read auth/kubernetes/role/vault-external-secrets || vault write auth/kubernetes/role/vault-external-secrets \
-  bound_service_account_names=external-secrets \
-  bound_service_account_namespaces=external-secrets \
-  policies="external-secrets" \
-  ttl=1h
-
-# Create policy for External Secrets
-echo "Creating external-secrets policy..."
-vault policy lookup external-secrets || vault policy write external-secrets - <<'EOF'
-path "kv/data/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-path "kv/metadata/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-EOF
-
-# Check if cloudflared token exists
-CLOUDFLARED_TOKEN=$(vault kv get -field=token kv/data/cloudflared-tunnel 2>/dev/null || true)
-
-if [ -z "$CLOUDFLARED_TOKEN" ]; then
-  echo "Creating placeholder Cloudflare token..."
-  vault kv put kv/cloudflared-tunnel token="PLACEHOLDER_CLOUDFLARE_TUNNEL_TOKEN" accountTag="PLACEHOLDER_ACCOUNT_TAG"
-  echo "Placeholder token created at kv/cloudflared-tunnel"
-  echo "  Please update with your actual token using:"
-  echo "  VAULT_ADDR=http://infra-vault:8200 vault kv put kv/cloudflared-tunnel token=YOUR_TOKEN accountTag=YOUR_ACCOUNT_TAG"
-else
-  echo "Cloudflare token already exists."
-fi
-
 echo "===> Bootstrap complete"
 echo "Vault is ready!"
 echo ""

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Phases: vault, eso, cloudflared, jenkins, full
+# Phases: vault, jenkins, full
 # Usage: PHASE=vault ./scripts/install.sh
 PHASE="${PHASE:-full}"
 
@@ -34,50 +34,30 @@ case "$PHASE" in
   vault)
     JENKINS_ENABLED="false"
     VAULT_ENABLED="true"
-    ESO_ENABLED="false"
-    CLOUDFLARED_ENABLED="false"
-    ;;
-  eso)
-    JENKINS_ENABLED="false"
-    VAULT_ENABLED="true"
-    ESO_ENABLED="true"
-    CLOUDFLARED_ENABLED="false"
-    ;;
-  cloudflared)
-    JENKINS_ENABLED="false"
-    VAULT_ENABLED="true"
-    ESO_ENABLED="true"
-    CLOUDFLARED_ENABLED="true"
     ;;
   jenkins)
     JENKINS_ENABLED="true"
     VAULT_ENABLED="true"
-    ESO_ENABLED="true"
-    CLOUDFLARED_ENABLED="false"
     ;;
   full)
     JENKINS_ENABLED="true"
     VAULT_ENABLED="true"
-    ESO_ENABLED="true"
-    CLOUDFLARED_ENABLED="true"
     ;;
   *)
     echo "❌ Unknown PHASE: $PHASE"
-    echo "Use: vault, eso, cloudflared, jenkins, or full"
+    echo "Use: vault, jenkins, or full"
     exit 1
     ;;
 esac
 
 # Install/upgrade helm chart with phase-specific overrides
-echo "==> Installing Helm chart (jenkins=$JENKINS_ENABLED, vault=$VAULT_ENABLED, eso=$ESO_ENABLED, cloudflared=$CLOUDFLARED_ENABLED)"
+echo "==> Installing Helm chart (jenkins=$JENKINS_ENABLED, vault=$VAULT_ENABLED)"
 helm upgrade --install "$RELEASE" "$CHART_PATH/helm" \
   -n "$NAMESPACE" \
   --timeout 30m30s \
   --create-namespace \
   --set jenkins.enabled="$JENKINS_ENABLED" \
-  --set vault.enabled="$VAULT_ENABLED" \
-  --set externalSecrets.install="$ESO_ENABLED" \
-  --set cloudflared.enabled="$CLOUDFLARED_ENABLED"
+  --set vault.enabled="$VAULT_ENABLED"
 
 echo "✅ Infra deployed to namespace: $NAMESPACE"
 echo ""
