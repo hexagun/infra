@@ -3,10 +3,10 @@ kind: ConfigMap
 metadata:
   name: vault-bootstrap-script
   namespace: {{ .Release.Namespace }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-    "helm.sh/hook-weight": "-1"
+  # annotations:
+  #   "helm.sh/hook": pre-install,pre-upgrade
+  #   "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  #   "helm.sh/hook-weight": "-2"
 data:
-  vault-bootstrap.sh: |
-    {{ .Files.Get "scripts/vault-bootstrap.sh" | indent 4 }}
+  vault-bootstrap.sh: |-
+    {{ .Files.Get "files/vault-bootstrap.sh" | nindent 4 }}

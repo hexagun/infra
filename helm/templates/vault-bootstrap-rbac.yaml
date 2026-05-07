@@ -9,12 +9,20 @@ metadata:
   labels:
     app.kubernetes.io/name: vault-bootstrap
     app.kubernetes.io/managed-by: helm
+  # annotations:
+  #   "helm.sh/hook": pre-install,pre-upgrade
+  #   "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  #   "helm.sh/hook-weight": "-3"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: vault-bootstrap
   namespace: {{ .Release.Namespace }}
+  # annotations:
+  #   "helm.sh/hook": pre-install,pre-upgrade
+  #   "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  #   "helm.sh/hook-weight": "-3"
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -25,6 +33,10 @@ kind: RoleBinding
 metadata:
   name: vault-bootstrap
   namespace: {{ .Release.Namespace }}
+  # annotations:
+  #   "helm.sh/hook": pre-install,pre-upgrade
+  #   "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  #   "helm.sh/hook-weight": "-3"
 subjects:
   - kind: ServiceAccount
     name: vault-bootstrap

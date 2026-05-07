@@ -6,29 +6,26 @@ kind: Job
 metadata:
   name: vault-bootstrap
   namespace: {{ .Release.Namespace }}
-  annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-    "helm.sh/hook-weight": "1"
 spec:
   template:
     spec:
+      ttlSecondsAfterFinished: 100
       restartPolicy: OnFailure
       serviceAccountName: vault-bootstrap
       containers:
-        - name: vault-cli
+        - name: bootstrap
           image: hashicorp/vault:1.19.1
           imagePullPolicy: IfNotPresent
           env:
             - name: VAULT_ADDR
-              value: "http://infra-vault:8200"
-          volumeMounts:
-            - name: bootstrap-script
-              mountPath: /bootstrap/vault-bootstrap.sh
-              subPath: vault-bootstrap.sh
-          command: ["/bootstrap/vault-bootstrap.sh"]
+              value: "http://vault-0.vault-internal:8200"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              # Execute the script content directly
+              {{ .Files.Get "files/vault-bootstrap.sh" | nindent 14 }}
       volumes:
         - name: bootstrap-script
           configMap:
             name: vault-bootstrap-script
-            defaultMode: 0755

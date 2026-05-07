@@ -1,17 +1,11 @@
 #!/bin/sh
-set -e
-
 VAULT_ADDR="${VAULT_ADDR:-http://infra-vault:8200}"
 BOOTSTRAP_SECRET="vault-bootstrap-secrets"
 
-echo "===> Waiting for Vault to be reachable"
-for i in $(seq 1 60); do
-  if curl -s "$VAULT_ADDR/health/ready" >/dev/null 2>&1; then
-    echo "Vault is reachable!"
-    break
-  fi
-  echo "Waiting for Vault... ($i/60)"
-  sleep 2
+echo "===> Waiting for Vault..."
+until curl -s "http://vault-0.vault-internal" > /dev/null 2>&1; do
+  echo "Vault is not reachable yet (DNS or service starting)..."
+  sleep 5
 done
 
 # Check initialization status
