@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infra.fullname" . }}-vault
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8200
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: {{ include "infra.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: vault
+
+{{- if .Values.vault.ui.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infra.fullname" . }}-vault-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "infra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8201
+    targetPort: https
+    protocol: TCP
+    name: https
+  selector:
+    app.kubernetes.io/name: {{ include "infra.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: vault
+{{- end }}

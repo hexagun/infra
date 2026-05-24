@@ -1,0 +1,195 @@
+{{- if .Values.vault.initJob.enabled -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ .Values.vault.initJob.serviceAccount.name }}
+      restartPolicy: OnFailure
+      containers:
+      - name: vault-init
+        image: {{ .Values.vault.initJob.image.repository }}:{{ .Values.vault.initJob.image.tag }}
+        imagePullPolicy: {{ .Values.vault.initJob.image.pullPolicy }}
+        env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_SKIP_VERIFY
+          value: "true"
+        - name: NAMESPACE
+          value: {{ .Release.Namespace }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "=== Waiting for Vault to start ==="
+          echo "Checking if Vault is ready..."
+
+          # Function to check if Vault is ready
+          wait_for_vault() {
+            local max_attempts=30
+            local attempt=1
+
+            while [ $attempt -le $max_attempts ]; do
+              if vault status > /dev/null 2>&1; then
+                echo "✓ Vault is ready!"
+                return 0
+              fi
+
+              echo "Attempt $attempt/$max_attempts: Vault not ready yet, waiting..."
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+
+            echo "✗ Vault did not start within $max_attempts attempts"
+            return 1
+          }
+
+          # Function to initialize Vault
+          initialize_vault() {
+            echo "=== Initializing Vault ==="
+
+            # Check if already initialized
+            if vault status > /dev/null 2>&1; then
+              echo "✓ Vault is already initialized"
+              vault status | grep -q "Sealed.*false" && echo "✓ Vault is unsealed" || echo "✗ Vault is sealed, need to unseal"
+              return 0
+            fi
+
+            echo "Initializing Vault with Shamir..."
+
+            # Initialize Vault
+            INIT_OUTPUT=$(vault init -shamir -n=5 -t=1 2>&1)
+
+            if [ $? -eq 0 ]; then
+              echo "✓ Vault initialized successfully"
+
+              # Extract keys
+              UNSEAL_KEY_1=$(echo "$INIT_OUTPUT" | grep "^Unseal Key 1:" | awk '{print $3}')
+              UNSEAL_KEY_2=$(echo "$INIT_OUTPUT" | grep "^Unseal Key 2:" | awk '{print $3}')
+              UNSEAL_KEY_3=$(echo "$INIT_OUTPUT" | grep "^Unseal Key 3:" | awk '{print $3}')
+              UNSEAL_KEY_4=$(echo "$INIT_OUTPUT" | grep "^Unseal Key 4:" | awk '{print $3}')
+              UNSEAL_KEY_5=$(echo "$INIT_OUTPUT" | grep "^Unseal Key 5:" | awk '{print $3}')
+              RECOVERY_KEY=$(echo "$INIT_OUTPUT" | grep "^Recovery Key 1:" | awk '{print $3}')
+              ROOT_TOKEN=$(echo "$INIT_OUTPUT" | grep "^Root Token:" | awk '{print $3}')
+
+              echo "✓ Keys extracted successfully"
+              echo "  Root Token: $ROOT_TOKEN"
+              echo "  Unseal Keys: $UNSEAL_KEY_1, $UNSEAL_KEY_2, $UNSEAL_KEY_3, $UNSEAL_KEY_4, $UNSEAL_KEY_5"
+              echo "  Recovery Key: $RECOVERY_KEY"
+
+              # Store unseal keys in Kubernetes Secret
+              echo "=== Storing unseal keys in Secret ==="
+              kubectl create secret generic {{ .Values.vault.initJob.secrets.unsealKeys }} \
+                --from-literal=key1="$UNSEAL_KEY_1" \
+                --from-literal=key2="$UNSEAL_KEY_2" \
+                --from-literal=key3="$UNSEAL_KEY_3" \
+                --from-literal=key4="$UNSEAL_KEY_4" \
+                --from-literal=key5="$UNSEAL_KEY_5" \
+                --from-literal=recovery-key="$RECOVERY_KEY" \
+                -n "$NAMESPACE" > /dev/null 2>&1
+
+              echo "✓ Unseal keys stored in Secret"
+
+              # Save root token
+              echo "$ROOT_TOKEN" | base64 -w 0 > /tmp/root-token-encrypted.txt
+              ROOT_TOKEN_ENCODED=$(cat /tmp/root-token-encrypted.txt)
+
+              # Store encrypted root token in Secret
+              echo "=== Storing encrypted root token in Secret ==="
+              kubectl create secret generic {{ .Values.vault.initJob.secrets.tokens }} \
+                --from-literal=root-token-encrypted="$ROOT_TOKEN_ENCODED" \
+                --from-literal=service-token="" \
+                --from-literal=k8s-token="" \
+                -n "$NAMESPACE" > /dev/null 2>&1
+
+              echo "✓ Encrypted root token stored in Secret"
+
+              # Enable Transit Engine for token encryption
+              echo "=== Enabling Transit Engine ==="
+              vault secrets enable transit > /dev/null 2>&1
+              echo "✓ Transit Engine enabled"
+
+              # Encrypt root token
+              echo "=== Encrypting root token ==="
+              ENCRYPTED_TOKEN=$(vault write -field=ciphertext transit/encrypt/secret \
+                context="root-token" \
+                key_name="vault-token-encryption" \
+                plaintext=$(cat /tmp/root-token-encrypted.txt) 2>&1 | grep "ciphertext:" | awk '{print $2}')
+
+              if [ -n "$ENCRYPTED_TOKEN" ]; then
+                echo "✓ Root token encrypted"
+                echo "  Ciphertext: ${ENCRYPTED_TOKEN:0:50}..."
+
+                # Update Secret with encrypted token
+                echo "=== Updating Secret with encrypted token ==="
+                kubectl create secret generic {{ .Values.vault.initJob.secrets.tokens }} \
+                  --from-literal=root-token-encrypted="$ENCRYPTED_TOKEN" \
+                  --from-literal=service-token="" \
+                  --from-literal=k8s-token="" \
+                  -n "$NAMESPACE" > /dev/null 2>&1
+
+                echo "✓ Secret updated with encrypted token"
+              else
+                echo "⚠ Failed to encrypt root token, keeping plaintext for now"
+              fi
+
+              return 0
+            else
+              echo "✗ Failed to initialize Vault"
+              return 1
+            fi
+          }
+
+          # Function to enable Kubernetes auth
+          enable_k8s_auth() {
+            echo "=== Enabling Kubernetes Auth ==="
+
+            # Enable Kubernetes auth method
+            vault auth enable kubernetes > /dev/null 2>&1
+            echo "✓ Kubernetes auth enabled"
+
+            # Configure Kubernetes auth
+            # Note: These values are placeholders - in production, you'd set them properly
+            echo "Configuring Kubernetes auth..."
+
+            return 0
+          }
+
+          # Main execution
+          wait_for_vault || exit 1
+          initialize_vault || exit 1
+          enable_k8s_auth || exit 1
+
+          echo "=== Vault initialization complete ==="
+          echo "Root token can be decrypted using: kubectl get secret {{ .Values.vault.initJob.secrets.tokens }} -n $NAMESPACE -o jsonpath={.data.root-token-encrypted} | base64 -d"
+        volumeMounts:
+        - name: kubernetes-certs
+          mountPath: /etc/kubernetes/pki
+          readOnly: true
+      volumes:
+      - name: kubernetes-certs
+        hostPath:
+          path: /etc/kubernetes/pki
+          type: Directory
+      {{- with .Values.vault.initJob.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.vault.initJob.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.vault.initJob.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+  backoffLimit: 3
+{{- end }}

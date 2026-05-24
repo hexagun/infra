@@ -106,5 +106,54 @@ vault:
       storageClass: longhorn
       size: 10Gi
 
+    # ServiceAccount for the server pod
+    serviceAccount:
+      create: true
+      name: vault
+
+    # Enable Kubernetes authentication method
+    extraEnvironmentVars:
+      VAULT_K8S_CLUSTER_CA_CERT: /etc/kubernetes/pki/ca.crt
+      VAULT_K8S_HOST: https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
+
   ui:
     enabled: true
+
+  # Post-installation job to initialize Vault
+  initJob:
+    enabled: true
+    image:
+      repository: bitnami/kubectl
+      tag: 1.28.0
+      pullPolicy: IfNotPresent
+    serviceAccount:
+      create: true
+      name: vault-init
+      annotations: {}
+
+    # Storage for unseal keys and tokens
+    secrets:
+      unsealKeys: vault-unseal-keys
+      tokens: vault-tokens
+
+    # Transit Engine for encrypting tokens
+    transit:
+      enabled: true
+
+    # Kubernetes auth method configuration
+    k8sAuth:
+      enabled: true
+      roleInit: vault-init
+      roleTunnel: tunnel
+      roleK8s: k8s-operator
+
+    # Policies
+    policies:
+      init: vault-init-policy
+      tunnel: tunnel-policy
+      k8s: k8s-policy
+
+    # Retention for token secrets
+    tokenRetention:
+      vaultInitTTL: 1h
+      tunnelTTL: 24h

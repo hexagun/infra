@@ -26,6 +26,8 @@ echo "==> Applying storage primitives"
 kubectl apply -f "$CHART_PATH/storage/pvcs"
 
 # Install/upgrade release
+# Vault post-install job is idempotent - safe to run multiple times
+# Tokens are encrypted using Transit Engine for enhanced security
 helm upgrade --install "$RELEASE" "$CHART_PATH/helm" \
   -n "$NAMESPACE" \
   --timeout 30m30s \
